@@ -1,0 +1,31 @@
+# ====================
+# .gitignore
+# ====================
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+terraform.tfvars
+crash.log
+
+# Ansible
+*.retry
+ansible/inventory/hosts.ini
+/tmp/ansible*
+
+# SSH Keys
+*.pem
+*.key
+id_rsa*
+
+# Kubeconfig
+admin.conf
+kubeconfig
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
