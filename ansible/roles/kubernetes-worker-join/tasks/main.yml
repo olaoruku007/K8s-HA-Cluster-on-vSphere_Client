@@ -1,1 +1,13 @@
+# ====================
+# ansible/roles/kubernetes-worker-join/tasks/main.yml
+# ====================
+---
+- name: Check if node is already joined
+  stat:
+    path: /etc/kubernetes/kubelet.conf
+  register: kubelet_conf
+
+- name: Join worker nodes to cluster
+  shell: "{{ hostvars['JOIN_COMMANDS']['worker_join'] }}"
+  when: not kubelet_conf.stat.exists
 
