@@ -1,1 +1,27 @@
+# ====================
+# ansible/roles/kubernetes-packages/tasks/main.yml
+# ====================
+---
+- name: Add Kubernetes repository
+  yum_repository:
+    name: kubernetes
+    description: Kubernetes Repository
+    baseurl: "https://pkgs.k8s.io/core:/stable:/v{{ kubernetes_version }}/rpm/"
+    enabled: yes
+    gpgcheck: yes
+    gpgkey: "https://pkgs.k8s.io/core:/stable:/v{{ kubernetes_version }}/rpm/repodata/repomd.xml.key"
+    exclude: kubelet kubeadm kubectl cri-tools kubernetes-cni
 
+- name: Install Kubernetes packages
+  dnf:
+    name:
+      - kubelet
+      - kubeadm
+      - kubectl
+    state: present
+    disable_excludes: kubernetes
+
+- name: Enable kubelet
+  systemd:
+    name: kubelet
+    enabled: yes
