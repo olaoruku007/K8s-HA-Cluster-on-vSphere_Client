@@ -1,1 +1,56 @@
+# ====================
+# ansible/roles/kubernetes-master-init/tasks/main.yml
+# ====================
+---
+- name: Check if cluster is already initialized
+  stat:
+    path: /etc/kubernetes/admin.conf
+  register: kubeadm_init
 
+- name: Initialize first master
+  shell: |
+    kubeadm init \
+      --control-plane-endpoint="{{ control_plane_endpoint }}" \
+      --upload-certs \
+      --apiserver-advertise-address={{ apiserver_advertise_address }} \
+      --pod-network-cidr={{ pod_network_cidr }} \
+      --service-cidr={{ service_cidr }}
+  when: not kubeadm_init.stat.exists
+  register: kubeadm_init_output
+
+- name: Create .kube directory for root
+  file:
+    path: /root/.kube
+    state: directory
+    mode: '0755'
+
+- name: Copy admin.conf to root's kube config
+  copy:
+    src: /etc/kubernetes/admin.conf
+    dest: /root/.kube/config
+    remote_src: yes
+    mode: '0600'
+
+- name: Generate join command for masters
+  shell: kubeadm token create --print-join-command --certificate-key $(kubeadm init phase upload-certs --upload-certs | grep -vw -e certificate -e Namespace)
+  register: master_join_command
+  when: not kubeadm_init.stat.exists
+
+- name: Save master join command
+  set_fact:
+    master_join_cmd: "{{ master_join_command.stdout }}"
+  when: master_join_command is defined and master_join_command.stdout is defined
+
+- name: Generate join command for workers
+  shell: kubeadm token create --print-join-command
+  register: worker_join_command
+
+- name: Save worker join command
+  set_fact:
+    worker_join_cmd: "{{ worker_join_command.stdout }}"
+
+- name: Share join commands with other nodes
+  add_host:
+    name: "JOIN_COMMANDS"
+    master_join: "{{ master_join_cmd | default('') }}"
+    worker_join: "{{ worker_join_cmd }}"
