@@ -1,1 +1,69 @@
+# ====================
+# ansible/roles/container-runtime/tasks/main.yml
+# ====================
+---
+- name: Create containerd directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+  loop:
+    - /etc/containerd
+    - /opt/cni/bin
+
+- name: Download containerd
+  get_url:
+    url: "https://github.com/containerd/containerd/releases/download/v{{ containerd_version }}/containerd-{{ containerd_version }}-linux-amd64.tar.gz"
+    dest: /tmp/containerd.tar.gz
+    mode: '0644'
+
+- name: Extract containerd
+  unarchive:
+    src: /tmp/containerd.tar.gz
+    dest: /usr/local
+    remote_src: yes
+
+- name: Download containerd systemd service
+  get_url:
+    url: https://raw.githubusercontent.com/containerd/containerd/main/containerd.service
+    dest: /etc/systemd/system/containerd.service
+    mode: '0644'
+
+- name: Download runc
+  get_url:
+    url: "https://github.com/opencontainers/runc/releases/download/v{{ runc_version }}/runc.amd64"
+    dest: /usr/local/sbin/runc
+    mode: '0755'
+
+- name: Download CNI plugins
+  get_url:
+    url: "https://github.com/containernetworking/plugins/releases/download/v{{ cni_plugins_version }}/cni-plugins-linux-amd64-v{{ cni_plugins_version }}.tgz"
+    dest: /tmp/cni-plugins.tgz
+    mode: '0644'
+
+- name: Extract CNI plugins
+  unarchive:
+    src: /tmp/cni-plugins.tgz
+    dest: /opt/cni/bin
+    remote_src: yes
+
+- name: Generate containerd configuration
+  shell: containerd config default > /etc/containerd/config.toml
+
+- name: Configure containerd to use systemd cgroup driver
+  lineinfile:
+    path: /etc/containerd/config.toml
+    regexp: '^\s*SystemdCgroup\s*='
+    line: '            SystemdCgroup = true'
+    insertafter: '^\s*\[plugins\."io\.containerd\.grpc\.v1\.cri"\.containerd\.runtimes\.runc\.options\]'
+
+- name: Reload systemd
+  systemd:
+    daemon_reload: yes
+
+- name: Enable and start containerd
+  systemd:
+    name: containerd
+    enabled: yes
+    state: started
 
