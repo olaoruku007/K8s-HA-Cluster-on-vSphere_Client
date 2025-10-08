@@ -1,1 +1,35 @@
+# ====================
+# ansible/site.yml
+# ====================
+---
+- name: Prepare all nodes
+  hosts: all
+  become: yes
+  roles:
+    - common
+    - container-runtime
+    - kubernetes-packages
 
+- name: Initialize first master
+  hosts: masters[0]
+  become: yes
+  roles:
+    - kubernetes-master-init
+
+- name: Join additional masters
+  hosts: masters[1:]
+  become: yes
+  roles:
+    - kubernetes-master-join
+
+- name: Join worker nodes
+  hosts: workers
+  become: yes
+  roles:
+    - kubernetes-worker-join
+
+- name: Configure cluster networking
+  hosts: masters[0]
+  become: yes
+  roles:
+    - kubernetes-networking
